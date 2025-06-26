@@ -1,0 +1,207 @@
+body {
+  font-family: Arial, sans-serif;
+  padding: 20px;
+  background-color: #f5f5f5;
+}
+
+.solution-container {
+  margin-bottom: 30px;
+  padding: 15px;
+  background: white;
+  border-radius: 10px;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+}
+
+.solution-container h2 {
+  color: #2c3e50;
+  border-bottom: 2px solid #3498db;
+  padding-bottom: 5px;
+}
+
+.tile-grid {
+  display: grid;
+  grid-template-columns: repeat(5, 160px);
+  gap: 0px; /* Change from 5px to 0 */
+  margin-top: 15px;
+}
+
+
+.tile {
+  width: 160px;
+  height: 160px;
+  position: relative;
+  overflow: visible;
+  border: none; /* Add if there was a border */
+  padding: 0; /* Add if there was padding */
+  margin: 0; /* Add if there was margin */
+}
+
+.tile-svg {
+  width: 100%;
+  height: 100%;
+  border: none;
+}
+
+
+.edge-value {
+  position: absolute;
+  font-size: 20px;  /* Increased from 10px */
+  font-weight: bold;
+  color: #2c3e50;
+}
+
+.north {
+  top: 4px;  /* Adjusted positioning */
+  left: 50%;
+  transform: translateX(-50%);
+}
+
+.east {
+  top: 50%;
+  right: 4px;  /* Adjusted positioning */
+  transform: translateY(-50%);
+}
+
+.south {
+  bottom: 4px;  /* Adjusted positioning */
+  left: 50%;
+  transform: translateX(-50%);
+}
+
+.west {
+  top: 50%;
+  left: 4px;  /* Adjusted positioning */
+  transform: translateY(-50%);
+}
+
+/* Rest of CSS remains unchanged */
+
+  
+  .puzzle-piece {
+    width: 100px;
+    height: 100px;
+    position: relative;
+    background: #fff;
+    border: 1px solid #000;
+    margin: 20px;
+  }
+  
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 40px;
+    padding: 20px;
+    background: #fff;
+    border: 1px solid #ddd;
+  }
+  
+  .grid::before {
+    content: '';
+    position: absolute;
+    width: 100%;
+    height: 1px;
+    background: #000;
+    top: 50%;
+    left: 0;
+  }
+  
+  .grid::after {
+    content: '';
+    position: absolute;
+    width: 1px;
+    height: 100%;
+    background: #000;
+    left: 50%;
+    top: 0;
+  }
+  
+  /* Updated edge and semicircle styles */
+  .edge {
+    position: absolute;
+    width: 16px; /* Adjusted for uniform semicircle size */
+    height: 16px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 12px;
+    overflow: visible;
+  }
+  
+  .edge.top {
+    top: -8px; /* Half of semicircle height (8px) to center on edge */
+    left: 50%;
+    transform: translateX(-50%);
+  }
+  
+  .edge.right {
+    right: -8px;
+    top: 50%;
+    transform: translateY(-50%);
+  }
+  
+  .edge.bottom {
+    bottom: -8px;
+    left: 50%;
+    transform: translateX(-50%);
+  }
+  
+  .edge.left {
+    left: -8px;
+    top: 50%;
+    transform: translateY(-50%);
+  }
+  
+  /* Semicircle - width: 16px, height: 8px for perfect semicircle */
+  .edge::before {
+    content: '';
+    position: absolute;
+    width: 16px;
+    height: 8px;
+    background: #fff;
+    border: 1px solid #000;
+    border-radius: 8px 8px 0 0;
+    z-index: -1;
+    overflow: visible;
+  }
+  
+  /* Negative semicircle style (cut-in) */
+  .edge.negative::before {
+    background: transparent;
+    border-radius: 0 0 8px 8px;
+    border-top: none;
+    background: #fff;
+  }
+  
+  /* Rotations for each edge */
+  .edge.top.positive::before {
+    transform: rotate(0deg);
+  }
+  
+  .edge.top.negative::before {
+    transform: rotate(180deg);
+  }
+  
+  .edge.right.positive::before {
+    transform: rotate(90deg);
+  }
+  
+  .edge.right.negative::before {
+    transform: rotate(270deg);
+  }
+  
+  .edge.bottom.positive::before {
+    transform: rotate(180deg);
+  }
+  
+  .edge.bottom.negative::before {
+    transform: rotate(0deg);
+  }
+  
+  .edge.left.positive::before {
+    transform: rotate(270deg);
+  }
+  
+  .edge.left.negative::before {
+    transform: rotate(90deg);
+  }
+  
