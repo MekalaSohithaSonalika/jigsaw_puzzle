@@ -1,19 +1,60 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-    <title>Tile Puzzle Visualization</title>
+    <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <link rel="stylesheet" type="text/css" href="style.css">
+    <title>Jigswan Puzzle Solver</title>
+    <link rel="stylesheet" href="style.css">
 </head>
 <body>
-    <div id="solution-count" style="font-size: 1.3em; font-weight: bold; margin-bottom: 20px;"></div>
-    <label for="image-upload">Upload an image for the puzzle:</label>
-    <input type="file" id="image-upload" accept="image/*">
-    <div id="solutions-container">
-        <div class="grid" id="puzzle-grid">
-            <!-- Puzzle pieces will be dynamically inserted here -->
+    <div class="container">
+        <h1>Jigswan Puzzle Solver</h1>
+        <p class="instructions">
+            In this puzzle, <strong>+</strong> (blue) indicates a tab ("in") and <strong>-</strong> (red) indicates a notch ("out").
+            When two pieces connect, a + must match with a - (the sum should be 0). Edges of the puzzle must be flat (value 0).
+        </p>
+        <div class="controls">
+            <button id="solveBtn">Solve Puzzle</button>
+            <button id="showTilesBtn">Show All Pieces</button>
+            <input type="number" id="tileIndex" placeholder="Piece index (0-99)" min="0" max="99" value="0">
+            <button id="showSingleTileBtn">Show Single Piece</button>
+            <button id="manualSolveBtn">Try Manual Solving</button>
         </div>
+        <div id="result">Number of solutions will appear here.</div>
+        <div id="tilesDisplay"></div>
     </div>
     <script src="script.js"></script>
+    <script>
+        document.getElementById('solveBtn').onclick = function() {
+            // Override console.log to display in result div
+            const resultDiv = document.getElementById('result');
+            const originalLog = console.log;
+            console.log = function(msg) {
+                resultDiv.textContent = msg;
+                originalLog.apply(console, arguments);
+            };
+            // Run the solver
+            getSolutions(tilesData);
+            // Restore console.log
+            // setTimeout(() => { console.log = originalLog; }, 1000);
+        };
+
+        document.getElementById('showTilesBtn').onclick = function() {
+            displayAllTiles();
+        };
+
+        document.getElementById('showSingleTileBtn').onclick = function() {
+            const index = parseInt(document.getElementById('tileIndex').value);
+            if (index >= 0 && index < tilesData.length) {
+                displaySingleTile(index);
+            } else {
+                alert('Please enter a valid piece index (0-99)');
+            }
+        };
+        
+        document.getElementById('manualSolveBtn').onclick = function() {
+            displayManualSolvingInterface();
+        };
+    </script>
 </body>
 </html>
