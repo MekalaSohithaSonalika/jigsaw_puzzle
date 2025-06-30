@@ -1,86 +1,3 @@
-// Tile visualization functions
-function getTilePath(tile) {
-    const [north, east, south, west] = tile;
-    const scale = 5;
-    let pathData = 'M0,0 ';
-
-    // North edge: inward curve for negative values
-    if (north !== 0) {
-        pathData += `Q50,${-north * scale} 100,0 `;
-    } else {
-        pathData += 'L100,0 ';
-    }
-
-    // East edge: inward curve for negative values
-    if (east !== 0) {
-        pathData += `Q${100 + east * scale},50 100,100 `;
-    } else {
-        pathData += 'L100,100 ';
-    }
-
-    // South edge: inward curve for negative values
-    if (south !== 0) {
-        pathData += `Q50,${100 + south * scale} 0,100 `;
-    } else {
-        pathData += 'L0,100 ';
-    }
-
-    // West edge: inward curve for negative values
-    if (west !== 0) {
-        pathData += `Q${-west * scale},50 0,0 `;
-    } else {
-        pathData += 'L0,0 ';
-    }
-
-    return pathData;
-}
-
-
-function displaySolution(solution, index) {
-    const container = document.createElement('div');
-    container.className = 'solution-container';
-    container.innerHTML = `<h2>Solution ${index + 1}</h2>`;
-    
-    const gridContainer = document.createElement('div');
-    gridContainer.className = 'tile-grid';
-    
-    solution.grid.forEach((row, i) => {
-        row.forEach((tile, j) => {
-            const tileDiv = document.createElement('div');
-            tileDiv.className = 'tile';
-            
-            if (tile) {
-                const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
-                svg.setAttribute('viewBox', '-20 -20 140 140'); // Extra space for outward curves
-                svg.setAttribute('class', 'tile-svg');
-                
-                // Draw tile with edge modifications
-                const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
-                path.setAttribute('d', getTilePath(tile));
-                path.setAttribute('fill', '#3498db');
-                path.setAttribute('stroke', '#2c3e50');
-                svg.appendChild(path);
-                
-                // Add edge value indicators
-                tile.forEach((value, edgeIndex) => {
-                    const text = document.createElement('div');
-                    text.className = `edge-value ${['north','east','south','west'][edgeIndex]}`;
-                    text.textContent = value;
-                    tileDiv.appendChild(text);
-                });
-                
-                tileDiv.appendChild(svg);
-            }
-            
-            gridContainer.appendChild(tileDiv);
-        });
-    });
-    
-    container.appendChild(gridContainer);
-    document.getElementById('solutions-container').appendChild(container);
-}
-
-// Tile puzzle solver (your original code)
 const getBoundary = (x, y, size) => {
     let temp = []
     if (x == 0) {
@@ -134,8 +51,11 @@ let check = (x, y, data, grid, size) => {
     return true
 }
 
+// Global variable to store solutions
+let globalSolutions = [];
+
 const getSolutions = (data) => {
-    let size = [5, 5]
+    let size = [10, 10]
     let solutions = []
     let grid = [...Array(size[0])].map((item) => Array(size[1]).fill(null))
     
@@ -185,217 +105,611 @@ const getSolutions = (data) => {
     
     dfs(0, 0, JSON.parse(JSON.stringify(grid)), JSON.parse(JSON.stringify(data)))
     
-    // Display each solution
-    solutions.forEach((solution, index) => {
-        displaySolution(solution, index);
+    // Store solutions globally
+    globalSolutions = solutions;
+    
+    // Display solutions visually
+    displaySolutions(solutions);
+    
+    if (solutions.length > 0) {
+        const counts = countNumbersInSolution(solutions[0]);
+        console.log(counts);
+    }
+}
+
+const displaySolutions = (solutions) => {
+    const tilesDisplay = document.getElementById('tilesDisplay');
+    const resultDiv = document.getElementById('result');
+    
+    if (solutions.length === 0) {
+        resultDiv.textContent = 'No solutions found.';
+        tilesDisplay.innerHTML = '';
+        return;
+    }
+    
+    resultDiv.textContent = `Found ${solutions.length} solution(s).`;
+    
+    const container = document.createElement('div');
+    container.style.marginTop = '20px';
+    
+    const title = document.createElement('h3');
+    title.textContent = 'Solutions:';
+    title.style.marginBottom = '15px';
+    container.appendChild(title);
+    
+    // Create navigation controls
+    const navContainer = document.createElement('div');
+    navContainer.style.display = 'flex';
+    navContainer.style.justifyContent = 'center';
+    navContainer.style.alignItems = 'center';
+    navContainer.style.gap = '15px';
+    navContainer.style.marginBottom = '20px';
+    
+    const prevBtn = document.createElement('button');
+    prevBtn.textContent = '← Previous';
+    prevBtn.style.padding = '8px 16px';
+    prevBtn.style.background = '#4f8cff';
+    prevBtn.style.color = 'white';
+    prevBtn.style.border = 'none';
+    prevBtn.style.borderRadius = '4px';
+    prevBtn.style.cursor = 'pointer';
+    
+    const solutionLabel = document.createElement('span');
+    solutionLabel.style.fontWeight = 'bold';
+    solutionLabel.style.fontSize = '16px';
+    
+    const nextBtn = document.createElement('button');
+    nextBtn.textContent = 'Next →';
+    nextBtn.style.padding = '8px 16px';
+    nextBtn.style.background = '#4f8cff';
+    nextBtn.style.color = 'white';
+    nextBtn.style.border = 'none';
+    nextBtn.style.borderRadius = '4px';
+    nextBtn.style.cursor = 'pointer';
+    
+    const blankGridBtn = document.createElement('button');
+    blankGridBtn.textContent = 'Blank Grid';
+    blankGridBtn.style.padding = '8px 16px';
+    blankGridBtn.style.background = '#6c757d';
+    blankGridBtn.style.color = 'white';
+    blankGridBtn.style.border = 'none';
+    blankGridBtn.style.borderRadius = '4px';
+    blankGridBtn.style.cursor = 'pointer';
+    blankGridBtn.style.marginLeft = '20px';
+    
+    navContainer.appendChild(prevBtn);
+    navContainer.appendChild(solutionLabel);
+    navContainer.appendChild(nextBtn);
+    navContainer.appendChild(blankGridBtn);
+    container.appendChild(navContainer);
+    
+    // Create solution grid container
+    const solutionGridContainer = document.createElement('div');
+    solutionGridContainer.style.display = 'flex';
+    solutionGridContainer.style.justifyContent = 'center';
+    solutionGridContainer.style.gap = '40px';
+    solutionGridContainer.style.alignItems = 'flex-start';
+    solutionGridContainer.style.overflow = 'auto';
+    solutionGridContainer.style.maxWidth = '100vw';
+    container.appendChild(solutionGridContainer);
+    
+    let currentSolutionIndex = 0;
+    
+    const displaySolution = (index) => {
+        const solution = solutions[index];
+        const grid = solution.grid;
+        
+        solutionLabel.textContent = `Solution ${index + 1} of ${solutions.length}`;
+        
+        // Update button states
+        prevBtn.disabled = index === 0;
+        nextBtn.disabled = index === solutions.length - 1;
+        prevBtn.style.background = index === 0 ? '#ccc' : '#4f8cff';
+        nextBtn.style.background = index === solutions.length - 1 ? '#ccc' : '#4f8cff';
+        
+        // Clear previous solution
+        solutionGridContainer.innerHTML = '';
+        
+        // Create solution grid
+        const solutionGrid = document.createElement('div');
+        solutionGrid.className = 'tiles-grid';
+        
+        // Add solution title
+        const solutionTitle = document.createElement('h4');
+        solutionTitle.textContent = 'Solution Grid:';
+        solutionTitle.style.marginBottom = '15px';
+        solutionTitle.style.color = '#495057';
+        solutionTitle.style.fontSize = '18px';
+        solutionTitle.style.textAlign = 'center';
+        
+        const solutionSection = document.createElement('div');
+        solutionSection.appendChild(solutionTitle);
+        solutionSection.appendChild(solutionGrid);
+        
+        for (let row = 0; row < 10; row++) {
+            for (let col = 0; col < 10; col++) {
+                const tile = grid[row][col];
+                if (tile) {
+                    const tileElement = createTileElement(tile, `${row},${col}`);
+                    // Do not override tile styles; use .tile CSS
+                    solutionGrid.appendChild(tileElement);
+                } else {
+                    // Empty cell
+                    const emptyCell = document.createElement('div');
+                    emptyCell.style.width = '60px';
+                    emptyCell.style.height = '60px';
+                    emptyCell.style.background = '#ddd';
+                    emptyCell.style.border = '0.5px solid #999';
+                    emptyCell.style.display = 'flex';
+                    emptyCell.style.alignItems = 'center';
+                    emptyCell.style.justifyContent = 'center';
+                    emptyCell.style.boxSizing = 'border-box';
+                    emptyCell.style.margin = '0';
+                    emptyCell.style.padding = '0';
+                    emptyCell.textContent = '?';
+                    emptyCell.style.color = '#999';
+                    solutionGrid.appendChild(emptyCell);
+                }
+            }
+        }
+        
+        // Add solution section to container
+        solutionGridContainer.appendChild(solutionSection);
+    };
+    
+    // Add event listeners
+    prevBtn.addEventListener('click', () => {
+        if (currentSolutionIndex > 0) {
+            currentSolutionIndex--;
+            displaySolution(currentSolutionIndex);
+        }
     });
     
-    return solutions;
-}
-
-// Tile data
-const tilesData = [
-    [0, 1, -1, 0], [0, 1, -2, -1], [0, 1, -5, -1], [0, -3, 5, -1], [0, 0, 6, 3],
-    [1, -6, -7, 0], [2, 2, 5, 6], [5, -5, -2, -2], [-5, 4, -3, 5], [-6, 0, -4, -4],
-    [7, -6, -7, 0], [-5, -5, -5, 6], [2, -2, 4, 5], [3, -3, -6, 2], [4, 0, 1, 3],
-    [7, -4, 4, 0], [5, -2, 3, 4], [-4, -3, -2, 2], [6, -3, -4, 3], [-1, 0, 7, 3],
-    [-4, -7, 0, 0], [-3, -7, 0, 7], [2, -6, 0, 7], [4, -1, 0, 6], [-7, 0, 0, 1]
-]
-
-// Get the number of solutions and display it at the top
-function updateSolutionCount() {
-    const count = getSolutions(tilesData).length;
-    const countDiv = document.getElementById('solution-count');
-    if (countDiv) {
-        countDiv.textContent = `Number of possible solutions: ${count}`;
-    }
-}
-
-// Initialize on load
-window.onload = () => {
-    updateSolutionCount();
-    getSolutions(tilesData);
+    nextBtn.addEventListener('click', () => {
+        if (currentSolutionIndex < solutions.length - 1) {
+            currentSolutionIndex++;
+            displaySolution(currentSolutionIndex);
+        }
+    });
+    
+    blankGridBtn.addEventListener('click', () => {
+        displayBlankGrid();
+    });
+    
+    // Display first solution
+    displaySolution(0);
+    
+    tilesDisplay.innerHTML = '';
+    tilesDisplay.appendChild(container);
 };
 
-// --- IMAGE PUZZLE PIECE LOGIC ---
-
-// Store the uploaded image globally
-let uploadedImage = null;
-
-// Listen for image upload
-const imageInput = document.getElementById('image-upload');
-if (imageInput) {
-    imageInput.addEventListener('change', function(event) {
-        const file = event.target.files[0];
-        if (!file) return;
-        const reader = new FileReader();
-        reader.onload = function(e) {
-            const img = new Image();
-            img.onload = function() {
-                uploadedImage = img;
-                // After image is loaded, show only Solution 1 with the image as puzzle pieces
-                displayImagePuzzle();
-            };
-            img.src = e.target.result;
-        };
-        reader.readAsDataURL(file);
-    });
-}
-
-// Helper: Parse SVG path string (M, L, Q) and draw on canvas context, scaled to w/h
-function drawSvgPathOnContext(ctx, svgPath, w, h) {
-    // The path is in 100x100 coordinates, scale to w/h
-    const scaleX = w / 100;
-    const scaleY = h / 100;
-    const commands = svgPath.match(/[MLQZmlqz][^MLQZmlqz]*/g);
-    let current = [0, 0];
-    if (!commands) return;
-    ctx.beginPath();
-    for (let cmd of commands) {
-        const type = cmd[0];
-        const nums = cmd.slice(1).trim().split(/[ ,]+/).map(Number);
-        if (type === 'M' || type === 'm') {
-            current = [nums[0] * scaleX, nums[1] * scaleY];
-            ctx.moveTo(current[0], current[1]);
-        } else if (type === 'L' || type === 'l') {
-            current = [nums[0] * scaleX, nums[1] * scaleY];
-            ctx.lineTo(current[0], current[1]);
-        } else if (type === 'Q' || type === 'q') {
-            // Quadratic curve: Q cx,cy x,y
-            const cx = nums[0] * scaleX;
-            const cy = nums[1] * scaleY;
-            const x = nums[2] * scaleX;
-            const y = nums[3] * scaleY;
-            ctx.quadraticCurveTo(cx, cy, x, y);
-            current = [x, y];
-        } else if (type === 'Z' || type === 'z') {
-            ctx.closePath();
-        }
-    }
-    ctx.closePath();
-}
-
-// Update displayImagePuzzle to show the full image for each solution, and overlay the puzzle-piece borders (in their correct shapes and positions) on top of the image, without cutting the image into pieces.
-function displayImagePuzzle() {
-    if (!uploadedImage) return;
-    // Get all solutions
-    const solutions = getSolutions(tilesData);
-    if (!solutions.length) return;
-
-    // Clear previous solutions
-    const solutionsContainer = document.getElementById('solutions-container');
-    solutionsContainer.innerHTML = '';
-
-    // --- Step 1: For solution 1, cut the image into pieces and store them in row-major order ---
-    const solution1 = solutions[0];
-    const grid1 = solution1.grid;
-    const rows = grid1.length;
-    const cols = grid1[0].length;
-    const pieceWidth = Math.floor(uploadedImage.width / cols);
-    const pieceHeight = Math.floor(uploadedImage.height / rows);
-    // Array of canvases in row-major order
-    const solution1Pieces = [];
-
-    // Prepare solution 1 canvas
-    const sol1Div = document.createElement('div');
-    sol1Div.className = 'solution-container';
-    const label1 = document.createElement('h2');
-    label1.textContent = `Solution 1`;
-    sol1Div.appendChild(label1);
-    const canvas1 = document.createElement('canvas');
-    canvas1.width = uploadedImage.width;
-    canvas1.height = uploadedImage.height;
-    const ctx1 = canvas1.getContext('2d');
-    ctx1.drawImage(uploadedImage, 0, 0, uploadedImage.width, uploadedImage.height);
-
-    // For each piece in solution 1, extract the image piece and store it in row-major order
-    for (let i = 0; i < rows; i++) {
-        for (let j = 0; j < cols; j++) {
-            const tile = grid1[i][j];
-            if (!tile) continue;
-            // Create an offscreen canvas for the piece
-            const pieceCanvas = document.createElement('canvas');
-            pieceCanvas.width = pieceWidth;
-            pieceCanvas.height = pieceHeight;
-            const pieceCtx = pieceCanvas.getContext('2d');
-            // Draw the shape and clip
-            drawSvgPathOnContext(pieceCtx, getTilePath(tile), pieceWidth, pieceHeight);
-            pieceCtx.save();
-            pieceCtx.clip();
-            // Draw the corresponding part of the image
-            pieceCtx.drawImage(
-                uploadedImage,
-                j * pieceWidth, i * pieceHeight, pieceWidth, pieceHeight,
-                0, 0, pieceWidth, pieceHeight
-            );
-            pieceCtx.restore();
-            // Draw the border
-            drawSvgPathOnContext(pieceCtx, getTilePath(tile), pieceWidth, pieceHeight);
-            pieceCtx.strokeStyle = 'black';
-            pieceCtx.lineWidth = 2;
-            pieceCtx.stroke();
-            // Store the piece in row-major order
-            solution1Pieces.push(pieceCanvas);
-            // Also draw the border on the main canvas
-            ctx1.save();
-            ctx1.translate(j * pieceWidth, i * pieceHeight);
-            drawSvgPathOnContext(ctx1, getTilePath(tile), pieceWidth, pieceHeight);
-            ctx1.strokeStyle = 'black';
-            ctx1.lineWidth = 2;
-            ctx1.stroke();
-            ctx1.restore();
-        }
-    }
-
-    // --- Step 1.5: Reconstruct the image from all pieces and display it beside Solution 1 ---
-    // Create a new canvas for the reconstructed image
-    const reconstructedCanvas = document.createElement('canvas');
-    reconstructedCanvas.width = uploadedImage.width;
-    reconstructedCanvas.height = uploadedImage.height;
-    const reconstructedCtx = reconstructedCanvas.getContext('2d');
-
-    // Draw each piece in its correct position
-    let pieceIdx = 0;
-    for (let i = 0; i < rows; i++) {
-        for (let j = 0; j < cols; j++) {
-            const pieceCanvas = solution1Pieces[pieceIdx++];
-            if (pieceCanvas) {
-                reconstructedCtx.drawImage(pieceCanvas, j * pieceWidth, i * pieceHeight);
+const countNumbersInSolution = (solution) => {
+    const counts = {};
+    for (let row of solution.grid) {
+        for (let tile of row) {
+            if (tile) {
+                for (let num of tile) {
+                    counts[num] = (counts[num] || 0) + 1;
+                }
             }
         }
     }
+    return counts;
+};
 
-    sol1Div.appendChild(gridContainer);
-    solutionsContainer.appendChild(sol1Div);
+// Visual display functions
+const createTileElement = (tile, index) => {
+    const tileDiv = document.createElement('div');
+    tileDiv.className = 'tile';
+    tileDiv.dataset.tileIndex = index;
+    
+    // Add tile index
+    const indexSpan = document.createElement('span');
+    indexSpan.className = 'tile-index';
+    indexSpan.textContent = index;
+    tileDiv.appendChild(indexSpan);
+    
+    // Add symbols for each edge
+    const edges = ['top', 'right', 'bottom', 'left'];
+    edges.forEach((edge, i) => {
+        const value = tile[i];
+        const numberDiv = document.createElement('div');
+        numberDiv.className = `tile-number ${edge}`;
+        
+        // Show + for in (positive) and - for out (negative)
+        if (value > 0) {
+            numberDiv.textContent = '+' + value;
+            numberDiv.classList.add('positive');
+        } else if (value < 0) {
+            numberDiv.textContent = value; // Already has negative sign
+            numberDiv.classList.add('negative');
+            // Add visual notch for "out" pieces
+            const notchDiv = document.createElement('div');
+            notchDiv.className = `tile-notch ${edge}`;
+            // Temporarily append to tile to get correct size
+            tileDiv.appendChild(notchDiv);
+            // Use actual rendered tile size
+            const tileSize = tileDiv.offsetWidth || 100;
+            const minRadius = tileSize * 0.10; // 10% of tile size
+            const maxRadius = tileSize * 0.25; // 25% of tile size
+            const absVal = Math.abs(value);
+            const clamped = Math.max(1, Math.min(absVal, 10));
+            const radius = minRadius + (maxRadius - minRadius) * (clamped - 1) / 9;
+            // Set size and position for perfect centering and edge alignment
+            notchDiv.style.boxSizing = 'content-box';
+            notchDiv.style.pointerEvents = 'none';
+            if (edge === 'top' || edge === 'bottom') {
+                notchDiv.style.width = `${radius * 2}px`;
+                notchDiv.style.height = `${radius}px`;
+                notchDiv.style.left = '50%';
+                notchDiv.style.transform = 'translateX(-50%)';
+                notchDiv.style.position = 'absolute';
+                if (edge === 'top') notchDiv.style.top = '0';
+                if (edge === 'bottom') notchDiv.style.bottom = '0';
+                notchDiv.style.borderRadius = edge === 'top'
+                    ? `0 0 ${radius}px ${radius}px`
+                    : `${radius}px ${radius}px 0 0`;
+            } else {
+                notchDiv.style.width = `${radius}px`;
+                notchDiv.style.height = `${radius * 2}px`;
+                notchDiv.style.top = '50%';
+                notchDiv.style.transform = 'translateY(-50%)';
+                notchDiv.style.position = 'absolute';
+                if (edge === 'left') notchDiv.style.left = '0';
+                if (edge === 'right') notchDiv.style.right = '0';
+                notchDiv.style.borderRadius = edge === 'left'
+                    ? `0 ${radius}px ${radius}px 0`
+                    : `${radius}px 0 0 ${radius}px`;
+            }
+        } else {
+            numberDiv.textContent = '0';
+            numberDiv.classList.add('zero');
+        }
+        
+        tileDiv.appendChild(numberDiv);
+    });
+    
+    return tileDiv;
+};
+
+function displaySingleTile(index) {
+    const tilesDisplay = document.getElementById('tilesDisplay');
+    tilesDisplay.innerHTML = '';
+    const container = document.createElement('div');
+    container.className = 'single-tile-container';
+    
+    const tileElement = createTileElement(tilesData[index], index);
+    tileElement.style.width = '200px';
+    tileElement.style.height = '200px';
+    
+    container.appendChild(tileElement);
+    
+    // Add title
+    const titleDiv = document.createElement('h3');
+    titleDiv.textContent = `Tile #${index}`;
+    titleDiv.style.marginBottom = '20px';
+    container.insertBefore(titleDiv, container.firstChild);
+    
+    // Add explanation
+    const explanationDiv = document.createElement('div');
+    explanationDiv.innerHTML = '<p>+ indicates "in" (tab)</p><p>- indicates "out" (notch)</p><p>0 indicates flat edge</p>';
+    explanationDiv.className = 'tile-explanation';
+    container.appendChild(explanationDiv);
+    
+    // Add rotation controls
+    const rotationControls = document.createElement('div');
+    rotationControls.className = 'rotation-controls';
+    rotationControls.innerHTML = `
+        <button class="rotate-btn" data-direction="left">↺ Rotate Left</button>
+        <button class="rotate-btn" data-direction="right">↻ Rotate Right</button>
+    `;
+    container.appendChild(rotationControls);
+    
+    // Add event listeners for rotation
+    rotationControls.querySelectorAll('.rotate-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+            const direction = btn.dataset.direction;
+            const currentTile = tilesData[index];
+            
+            // Rotate the tile data
+            if (direction === 'left') {
+                tilesData[index] = [currentTile[3], currentTile[0], currentTile[1], currentTile[2]];
+            } else {
+                tilesData[index] = [currentTile[1], currentTile[2], currentTile[3], currentTile[0]];
+            }
+            
+            // Re-display the tile with new rotation
+            displaySingleTile(index);
+        });
+    });
+    
+    tilesDisplay.appendChild(container);
 }
 
-// Helper to compare two arrays for equality
-function arraysEqual(a, b) {
-    if (a.length !== b.length) return false;
-    for (let i = 0; i < a.length; i++) {
-        if (a[i] !== b[i]) return false;
+const displayManualSolvingInterface = () => {
+    const tilesDisplay = document.getElementById('tilesDisplay');
+    tilesDisplay.innerHTML = '';
+    
+    const container = document.createElement('div');
+    container.className = 'manual-solving-area';
+    
+    // Add header
+    const header = document.createElement('h3');
+    header.textContent = 'Manual Puzzle Solving';
+    container.appendChild(header);
+    
+    // Add instructions
+    const instructions = document.createElement('p');
+    instructions.innerHTML = 'Drag pieces from below and drop them onto the grid. <br>Remember: + (blue tab) connects with - (red notch).';
+    container.appendChild(instructions);
+    
+    // Add pieces container
+    const piecesContainer = document.createElement('div');
+    piecesContainer.className = 'pieces-container';
+    
+    // Add puzzle pieces
+    tilesData.forEach((tile, index) => {
+        const tileElement = createTileElement(tile, index);
+        tileElement.classList.add('draggable');
+        tileElement.style.transform = 'scale(0.8)';
+        
+        // Add drag functionality
+        tileElement.setAttribute('draggable', true);
+        tileElement.addEventListener('dragstart', (e) => {
+            e.dataTransfer.setData('text/plain', index);
+            setTimeout(() => {
+                tileElement.classList.add('dragging');
+            }, 0);
+        });
+        tileElement.addEventListener('dragend', () => {
+            tileElement.classList.remove('dragging');
+        });
+        
+        piecesContainer.appendChild(tileElement);
+    });
+    
+    container.appendChild(piecesContainer);
+    
+    // Add puzzle grid
+    const puzzleGrid = document.createElement('div');
+    puzzleGrid.className = 'puzzle-grid';
+    
+    // Create 10x10 grid
+    for (let row = 0; row < 10; row++) {
+        for (let col = 0; col < 10; col++) {
+            const cell = document.createElement('div');
+            cell.className = 'grid-cell';
+            cell.dataset.row = row;
+            cell.dataset.col = col;
+            
+            // Add drop functionality
+            cell.addEventListener('dragover', (e) => {
+                e.preventDefault();
+                cell.classList.add('highlight');
+            });
+            
+            cell.addEventListener('dragleave', () => {
+                cell.classList.remove('highlight');
+            });
+            
+            cell.addEventListener('drop', (e) => {
+                e.preventDefault();
+                cell.classList.remove('highlight');
+                const tileIndex = e.dataTransfer.getData('text/plain');
+                
+                // Check if this is a valid placement
+                // For now, just place the tile
+                if (!cell.hasChildNodes()) {
+                    const tileElement = createTileElement(tilesData[tileIndex], tileIndex);
+                    tileElement.style.width = '58px';
+                    tileElement.style.height = '58px';
+                    tileElement.style.margin = '0';
+                    cell.appendChild(tileElement);
+                }
+            });
+            
+            puzzleGrid.appendChild(cell);
+        }
     }
-    return true;
-}
+    
+    container.appendChild(puzzleGrid);
+    
+    // Add button to check solution
+    const checkButton = document.createElement('button');
+    checkButton.textContent = 'Check Solution';
+    checkButton.className = 'check-solution-btn';
+    checkButton.style.marginTop = '20px';
+    checkButton.style.padding = '10px 20px';
+    checkButton.style.background = '#4f8cff';
+    checkButton.style.color = '#fff';
+    checkButton.style.border = 'none';
+    checkButton.style.borderRadius = '6px';
+    checkButton.style.cursor = 'pointer';
+    
+    checkButton.addEventListener('click', () => {
+        // Logic to check if the manual solution is correct
+        alert('This feature is still being developed!');
+    });
+    
+    container.appendChild(checkButton);
+    
+    tilesDisplay.appendChild(container);
+};
 
-// Get the number of solutions
-const numberOfSolutions = getSolutions(tilesData).length;
-console.log(`Number of solutions: ${numberOfSolutions}`);
+const displayAllTiles = () => {
+    const tilesDisplay = document.getElementById('tilesDisplay');
+    tilesDisplay.innerHTML = '';
+    
+    const container = document.createElement('div');
+    container.style.textAlign = 'center';
+    
+    const explanation = document.createElement('div');
+    explanation.innerHTML = '<h3>Jigswan Puzzle Pieces</h3><p>+ (blue) indicates "in" (tab)</p><p>- (red) indicates "out" (notch)</p><p>0 (gray) indicates flat edge</p>';
+    explanation.style.marginBottom = '20px';
+    container.appendChild(explanation);
+    
+    const grid = document.createElement('div');
+    grid.className = 'tiles-grid';
+    
+    tilesData.forEach((tile, index) => {
+        const tileElement = createTileElement(tile, index);
+        grid.appendChild(tileElement);
+    });
+    
+    container.appendChild(grid);
+    
+    // Add manual solving button
+    const manualSolveButton = document.createElement('button');
+    manualSolveButton.textContent = 'Try Solving Manually';
+    manualSolveButton.style.marginTop = '20px';
+    manualSolveButton.style.padding = '10px 20px';
+    manualSolveButton.style.background = '#4CAF50';
+    manualSolveButton.style.color = 'white';
+    manualSolveButton.style.border = 'none';
+    manualSolveButton.style.borderRadius = '4px';
+    manualSolveButton.style.cursor = 'pointer';
+    
+    manualSolveButton.addEventListener('click', displayManualSolvingInterface);
+    
+    container.appendChild(manualSolveButton);
+    tilesDisplay.appendChild(container);
+};
 
-window.onload = function() {
-    // Replace with your actual solution data
-    const solution = [
-      /* Array of tile data for the solution */
-    ];
-    displaySolution(solution, 0);
-  };
+const displayBlankGrid = () => {
+    const tilesDisplay = document.getElementById('tilesDisplay');
+    tilesDisplay.innerHTML = '';
+    
+    const container = document.createElement('div');
+    container.style.padding = '20px';
+    container.style.maxWidth = '800px';
+    container.style.margin = '0 auto';
+    container.style.textAlign = 'center';
+    
+    const title = document.createElement('h2');
+    title.textContent = 'Blank 10x10 Grid';
+    title.style.color = '#495057';
+    title.style.marginBottom = '30px';
+    container.appendChild(title);
+    
+    const grid = document.createElement('div');
+    grid.style.display = 'grid';
+    grid.style.gridTemplateColumns = 'repeat(10, 1fr)';
+    grid.style.gap = '4px';
+    grid.style.maxWidth = 'fit-content';
+    grid.style.margin = '0 auto';
+    grid.style.padding = '10px';
+    grid.style.background = 'white';
+    grid.style.borderRadius = '6px';
+    
+    // Get the first solution grid
+    const solutionGrid = globalSolutions.length > 0 ? globalSolutions[0].grid : null;
+    
+    for (let row = 0; row < 10; row++) {
+        for (let col = 0; col < 10; col++) {
+            const cell = document.createElement('div');
+            cell.style.width = '60px';
+            cell.style.height = '60px';
+            cell.style.background = 'white';
+            cell.style.display = 'flex';
+            cell.style.alignItems = 'center';
+            cell.style.justifyContent = 'center';
+            cell.style.cursor = 'pointer';
+            cell.style.border = '1px solid #000';
+            cell.style.position = 'relative';
+            
+            // Check edges for -1 and add semicircle cuts for all tiles in the solution
+            if (solutionGrid && solutionGrid[row][col]) {
+                const tile = solutionGrid[row][col];
+                const edgeLength = 60;
+                const radius = edgeLength / 6; // 10px radius
+                const cx = edgeLength / 2;
+                const cy = edgeLength / 2;
+                // For each edge: 0=top, 1=right, 2=bottom, 3=left
+                tile.forEach((value, index) => {
+                    if (value === -1) {
+                        const cut = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+                        cut.setAttribute("width", `${edgeLength}`);
+                        cut.setAttribute("height", `${edgeLength}`);
+                        cut.style.position = "absolute";
+                        cut.style.left = "0";
+                        cut.style.top = "0";
+                        cut.style.pointerEvents = "none";
+                        let pathStr = "";
 
-// Adjust selector if your grid cells use a different class
-const cells = document.querySelectorAll('.tile');
-const gridWidth = 5; // Set this to your grid's column count
+                        // Add path data based on edge
+                        switch(index) {
+                            case 0: // Top
+                                pathStr = `M${cx},${cy} m${-radius},0 a${radius},${radius} 0 0,0 ${radius*2},0`;
+                                break;
+                            case 1: // Right
+                                pathStr = `M${cx},${cy} m0,${-radius} a${radius},${radius} 0 0,0 0,${radius*2}`;
+                                break;
+                            case 2: // Bottom
+                                pathStr = `M${cx},${cy} m${-radius},0 a${radius},${radius} 0 0,1 ${radius*2},0`;
+                                break;
+                            case 3: // Left
+                                pathStr = `M${cx},${cy} m0,${-radius} a${radius},${radius} 0 0,1 0,${radius*2}`;
+                                break;
+                        }
 
-cells.forEach((cell, i) => {
-  const x = i % gridWidth;
-  const y = Math.floor(i / gridWidth);
-  cell.style.transform = `translateX(${x * -45}px) translateY(${y * -45}px)`;
-});
+                        const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
+                        path.setAttribute("d", pathStr);
+                        path.setAttribute("fill", "none");
+                        path.setAttribute("stroke", "#000");
+                        path.setAttribute("stroke-width", "2");
+
+                        cut.appendChild(path);
+                        cell.appendChild(cut);
+                    }
+                });
+            }
+            
+            // Add hover effect
+            cell.addEventListener('mouseenter', () => {
+                cell.style.background = '#e9ecef';
+            });
+            cell.addEventListener('mouseleave', () => {
+                cell.style.background = 'white';
+            });
+            
+            grid.appendChild(cell);
+        }
+    }
+    
+    container.appendChild(grid);
+    
+    // Add back button
+    const backBtn = document.createElement('button');
+    backBtn.textContent = '← Back';
+    backBtn.style.padding = '10px 20px';
+    backBtn.style.background = '#007bff';
+    backBtn.style.color = 'white';
+    backBtn.style.border = 'none';
+    backBtn.style.borderRadius = '4px';
+    backBtn.style.cursor = 'pointer';
+    backBtn.style.marginTop = '20px';
+    backBtn.addEventListener('click', () => {
+        tilesDisplay.innerHTML = '';
+    });
+    
+    container.appendChild(backBtn);
+    tilesDisplay.appendChild(container);
+};
+
+let tilesData = [
+    [0, -1, 1, 0], [0, -6, -9, 1], [0, -3, -5, 6], [0, 8, 9, 3], [0, 2, -5, -8], [0, -6, 3, -2], [0, -2, 2, 6], [0, 1, -5, 2], [0, 8, 8, -1], [0, 0, 9, -8],
+    [-1, 10, -8, 0], [9, 10, -1, -10], [5, 10, -10, -10], [-9, 7, 1, -10], [5, -3, 9, -7], [-3, -2, -5, 3], [-2, 8, 6, 2], [5, 10, -9, -8], [-8, -2, 2, -10], [-9, 0, 4, 2],
+    [8, 7, -2, 0], [1, 1, 1, -7], [10, 1, -10, -1], [-1, -3, 10, -1], [-9, -4, -4, 3], [5, 5, -5, 4], [-6, -8, 9, -5], [9, 2, -4, 8], [-2, 8, 6, -2], [-4, 0, 7, -8],
+    [2, 7, 5, 0], [-1, -4, -4, -7], [10, 9, -3, 4], [-10, -4, -7, -9], [4, 4, 10, 4], [5, -5, 7, -4], [-9, -1, 5, 5], [4, 5, 10, 1], [-6, 3, 3, -5], [-7, 0, 4, -3],
+    [-5, 1, -5, 0], [4, -2, -3, -1], [3, -1, -10, 2], [7, -6, 5, 1], [-10, 1, 6, 6], [-7, 7, 10, -1], [-5, 9, 8, -7], [-10, -7, -4, -9], [-3, -1, 1, 7], [-4, 0, 8, 1],
+    [5, 10, 7, 0], [3, 3, -10, -10], [10, 3, -8, -3], [-5, 2, -2, -3], [-6, -3, -9, -2], [-10, -7, 7, 3], [-8, -6, 4, 7], [4, -10, 9, 6], [-1, 5, -6, 10], [-8, 0, -4, -5],
+    [-7, -2, -10, 0], [10, 5, 1, 2], [8, -5, 4, -5], [2, -7, -5, 5], [9, 5, -10, 7], [-7, 1, 4, -5], [-4, -7, 8, -1], [-9, -1, -5, 7], [6, 3, 5, 1], [4, 0, -8, -3],
+    [10, 6, 9, 0], [-1, 9, -8, -6], [-4, -4, 9, -9], [5, -5, -10, 4], [10, 10, 5, 5], [-4, 2, 1, -10], [-8, 5, -8, -2], [5, 7, -9, -5], [-5, -7, 1, -7], [8, 0, -10, 7],
+    [-9, 2, -5, 0], [8, 5, 4, -2], [-9, -7, 9, -5], [10, 3, 1, 7], [-5, -7, 6, -3], [-1, -1, -5, 7], [8, 9, 5, 1], [9, -6, 7, -9], [-1, -6, 8, 6], [10, 0, 7, 6],
+    [5, 2, 0, 0], [-4, -1, 0, -2], [-9, 8, 0, 1], [-1, -6, 0, -8], [-6, 4, 0, 6], [5, 3, 0, -4], [-5, 8, 0, -3], [-7, -6, 0, -8], [-8, 4, 0, 6], [-7, 0, 0, -4]   
+]  
+getSolutions(tilesData)
+console.log(tilesData.length)
+
+
+
