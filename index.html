@@ -9,6 +9,8 @@
 <body>
     <div class="container">
         <h1>Jigswan Puzzle Solver</h1>
+        <label for="imageUpload" style="font-weight: bold; margin-right: 10px;">Choose puzzle image:</label>
+        <input type="file" id="imageUpload" accept="image/*" style="margin: 20px 0; display: block;" />
         <p class="instructions">
             In this puzzle, <strong>+</strong> (blue) indicates a tab ("in") and <strong>-</strong> (red) indicates a notch ("out").
             When two pieces connect, a + must match with a - (the sum should be 0). Edges of the puzzle must be flat (value 0).
@@ -19,42 +21,168 @@
             <input type="number" id="tileIndex" placeholder="Piece index (0-99)" min="0" max="99" value="0">
             <button id="showSingleTileBtn">Show Single Piece</button>
             <button id="manualSolveBtn">Try Manual Solving</button>
+            <button id="downloadSolutionsBtn" disabled>Download Solutions</button>
+            <button id="mapImageToSolutionsBtn" disabled>Map Image to All Solutions</button>
+        </div>
+        <!-- Tile position finder -->
+        <div id="tilePositionFinder" style="margin: 20px 0;">
+            <input type="text" id="tileNumbersInput" placeholder="Enter tile numbers, e.g. 0,2,-5,-8" style="padding: 8px; width: 220px;">
+            <button id="findTilePositionBtn" style="padding: 8px 16px;">Find Position in Solution 2</button>
+            <span id="tilePositionResult" style="margin-left: 16px; font-weight: bold;"></span>
         </div>
         <div id="result">Number of solutions will appear here.</div>
         <div id="tilesDisplay"></div>
     </div>
     <script src="script.js"></script>
     <script>
-        document.getElementById('solveBtn').onclick = function() {
-            // Override console.log to display in result div
+        // Global variables
+        let currentSolutions = [];
+        let tilesData = [];
+        let originalImage = null; // Store the original image
+
+        // Function to handle puzzle solving and enable download
+        async function solvePuzzle() {
             const resultDiv = document.getElementById('result');
-            const originalLog = console.log;
-            console.log = function(msg) {
-                resultDiv.textContent = msg;
-                originalLog.apply(console, arguments);
-            };
-            // Run the solver
-            getSolutions(tilesData);
-            // Restore console.log
-            // setTimeout(() => { console.log = originalLog; }, 1000);
-        };
-
-        document.getElementById('showTilesBtn').onclick = function() {
-            displayAllTiles();
-        };
-
-        document.getElementById('showSingleTileBtn').onclick = function() {
-            const index = parseInt(document.getElementById('tileIndex').value);
-            if (index >= 0 && index < tilesData.length) {
-                displaySingleTile(index);
-            } else {
-                alert('Please enter a valid piece index (0-99)');
+            const downloadBtn = document.getElementById('downloadSolutionsBtn');
+            const mapBtn = document.getElementById('mapImageToSolutionsBtn');
+            
+            try {
+                resultDiv.textContent = 'Solving puzzle...';
+                downloadBtn.disabled = true;
+                mapBtn.disabled = true;
+                
+                // Get solutions from the solver
+                const solutions = await findPuzzleSolutions(tilesData);
+                currentSolutions = solutions;
+                
+                if (solutions && solutions.length > 0) {
+                    resultDiv.textContent = `Found ${solutions.length} solution(s)!`;
+                    downloadBtn.disabled = false;
+                    mapBtn.disabled = false;
+                } else {
+                    resultDiv.textContent = 'No solutions found';
+                    downloadBtn.disabled = true;
+                    mapBtn.disabled = true;
+                }
+            } catch (error) {
+                resultDiv.textContent = `Error: ${error.message}`;
+                downloadBtn.disabled = true;
+                mapBtn.disabled = true;
             }
-        };
-        
-        document.getElementById('manualSolveBtn').onclick = function() {
-            displayManualSolvingInterface();
-        };
+        }
+
+        // Function to download solutions
+        function downloadSolutions() {
+            if (!currentSolutions || currentSolutions.length === 0) {
+                alert('No solutions available. Please solve the puzzle first.');
+                return;
+            }
+
+            try {
+                // Create the solutions object
+                const solutionsData = {
+                    timestamp: new Date().toISOString(),
+                    numberOfSolutions: currentSolutions.length,
+                    solutions: currentSolutions
+                };
+
+                // Convert to JSON and create blob
+                const jsonString = JSON.stringify(solutionsData, null, 2);
+                const blob = new Blob([jsonString], { type: 'application/json' });
+                
+                // Create download link
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+                a.href = url;
+                a.download = `puzzle-solutions-${timestamp}.json`;
+                
+                // Trigger download
+                document.body.appendChild(a);
+                a.click();
+                
+                // Cleanup
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+            } catch (error) {
+                console.error('Download error:', error);
+                alert('Failed to download solutions. Please try again.');
+            }
+        }
+
+        // Function to map image to all solutions
+        async function mapImageToAllSolutions() {
+            if (!originalImage || !currentSolutions || currentSolutions.length === 0) {
+                alert('Please upload an image and solve the puzzle first.');
+                return;
+            }
+
+            const resultDiv = document.getElementById('result');
+            resultDiv.textContent = 'Mapping image to all solutions...';
+
+            try {
+                const mappedSolutions = [];
+                for (let i = 0; i < currentSolutions.length; i++) {
+                    const solution = currentSolutions[i];
+                    const mappedImage = await mapImageToSolution(originalImage, solution, tilesData);
+                    mappedSolutions.push({
+                        solutionIndex: i + 1,
+                        solution: solution,
+                        mappedImage: mappedImage
+                    });
+                }
+
+                // Display all mapped solutions
+                const tilesDisplay = document.getElementById('tilesDisplay');
+                tilesDisplay.innerHTML = '';
+                
+                mappedSolutions.forEach(({solutionIndex, mappedImage}) => {
+                    const solutionDiv = document.createElement('div');
+                    solutionDiv.className = 'solution-container';
+                    solutionDiv.innerHTML = `
+                        <h3>Solution ${solutionIndex}</h3>
+                        <img src="${mappedImage}" alt="Solution ${solutionIndex}">
+                    `;
+                    tilesDisplay.appendChild(solutionDiv);
+                });
+
+                resultDiv.textContent = `Successfully mapped image to all ${currentSolutions.length} solutions!`;
+            } catch (error) {
+                console.error('Mapping error:', error);
+                resultDiv.textContent = 'Error mapping image to solutions.';
+            }
+        }
+
+        // Event Listeners
+        document.getElementById('solveBtn').addEventListener('click', solvePuzzle);
+        document.getElementById('downloadSolutionsBtn').addEventListener('click', downloadSolutions);
+
+        // Image upload handler
+        document.getElementById('imageUpload').addEventListener('change', async function(event) {
+            const file = event.target.files[0];
+            if (file) {
+                try {
+                    // Reset current state
+                    currentSolutions = [];
+                    document.getElementById('downloadSolutionsBtn').disabled = true;
+                    document.getElementById('mapImageToSolutionsBtn').disabled = true;
+                    document.getElementById('result').textContent = 'Processing image...';
+                    
+                    // Store the original image
+                    originalImage = await createImageBitmap(file);
+                    
+                    // Process the image and get tiles data
+                    tilesData = await processImage(file);
+                    document.getElementById('result').textContent = 'Image processed. Click "Solve Puzzle" to find solutions.';
+                } catch (error) {
+                    console.error('Image processing error:', error);
+                    document.getElementById('result').textContent = 'Error processing image.';
+                }
+            }
+        });
+
+        // Add event listener for the new button
+        document.getElementById('mapImageToSolutionsBtn').addEventListener('click', mapImageToAllSolutions);
     </script>
 </body>
 </html>
