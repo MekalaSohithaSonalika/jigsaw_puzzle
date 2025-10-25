@@ -30,6 +30,11 @@
             <button id="findTilePositionBtn" style="padding: 8px 16px;">Find Position in Solution 2</button>
             <span id="tilePositionResult" style="margin-left: 16px; font-weight: bold;"></span>
         </div>
+        <div id="tileRotationFinder" style="margin: 20px 0;">
+            <input type="text" id="rotationTileNumbersInput" placeholder="Enter tile numbers, e.g. 0,5,-6,-5" style="padding: 8px; width: 220px;">
+            <button id="findTileRotationBtn" style="padding: 8px 16px;">Find Rotation & Direction in Solution 2</button>
+        </div>
+        <div id="tileRotationResult" style="margin-top: 10px; font-weight: bold; min-height: 24px;"></div>
         <div id="result">Number of solutions will appear here.</div>
         <div id="tilesDisplay"></div>
     </div>
@@ -183,6 +188,87 @@
 
         // Add event listener for the new button
         document.getElementById('mapImageToSolutionsBtn').addEventListener('click', mapImageToAllSolutions);
+
+        // Handler to find rotation difference and direction for a specific tile (by numbers) between solution1 and solution2
+        const rotationBtn = document.getElementById('findTileRotationBtn');
+        if (rotationBtn) {
+            rotationBtn.addEventListener('click', function() {
+                const numbersInput = document.getElementById('rotationTileNumbersInput');
+                const resultSpan = document.getElementById('tileRotationResult');
+                const tileNumbersStr = numbersInput.value.trim();
+                if (!tileNumbersStr) {
+                    resultSpan.textContent = 'Please enter tile numbers.';
+                    return;
+                }
+                if (!Array.isArray(window.globalSolutions) ||
+                    !Array.isArray(window.globalSolutions[0]?.grid) ||
+                    !Array.isArray(window.globalSolutions[1]?.grid)) {
+                    resultSpan.textContent = 'Both solutions must be available.';
+                    return;
+                }
+                // Parse tile numbers
+                const tileNumbers = tileNumbersStr.split(',').map(s => parseInt(s.trim(), 10));
+                if (tileNumbers.some(isNaN)) {
+                    resultSpan.textContent = 'Invalid tile numbers.';
+                    return;
+                }
+                // Find the tile in both solutions (all rotations)
+                function findTileInSolution(solution, tileNumbers) {
+                    for (let r = 0; r < solution.grid.length; r++) {
+                        for (let c = 0; c < solution.grid[r].length; c++) {
+                            let tile = solution.grid[r][c];
+                            if (!tile) continue;
+                            let t = tile.slice();
+                            for (let rot = 0; rot < 4; rot++) {
+                                if (t.every((n, i) => n === tileNumbers[i])) {
+                                    return { pos: [r, c], rotation: rot };
+                                }
+                                t = [t[1], t[2], t[3], t[0]];
+                            }
+                        }
+                    }
+                    return null;
+                }
+                const sol1 = window.globalSolutions[0];
+                const sol2 = window.globalSolutions[1];
+                const found1 = findTileInSolution(sol1, tileNumbers);
+                const found2 = findTileInSolution(sol2, tileNumbers);
+                if (!found1 || !found2) {
+                    resultSpan.textContent = 'Tile not found in both solutions.';
+                    return;
+                }
+                // Calculate rotation difference
+                let delta = (found2.rotation - found1.rotation + 4) % 4;
+                let degrees = delta * 90;
+                let direction = '';
+                if (delta === 0) {
+                    resultSpan.textContent = `Tile [${tileNumbers.join(',')}] has no rotation difference in Solution 2 compared to Solution 1.`;
+                } else if (delta === 2) {
+                    resultSpan.textContent = `Tile [${tileNumbers.join(',')}] is rotated 180° in Solution 2 compared to Solution 1.`;
+                } else if (delta === 1) {
+                    resultSpan.textContent = `Tile [${tileNumbers.join(',')}] is rotated 90° anticlockwise in Solution 2 compared to Solution 1.`;
+                } else if (delta === 3) {
+                    resultSpan.textContent = `Tile [${tileNumbers.join(',')}] is rotated 90° clockwise in Solution 2 compared to Solution 1.`;
+                }
+            });
+        }
+
+        function drawRotatedPieceImage(x, y, image, rotationDelta) {
+            const ctx = canvas.getContext('2d');
+            const angle = rotationDelta * Math.PI / 2; // Convert to radians
+
+            ctx.save();
+            ctx.translate(x + image.width/2, y + image.height/2); // Move to center of piece
+            ctx.rotate(angle);
+            ctx.drawImage(image, -image.width/2, -image.height/2);
+            ctx.restore();
+        }
+
+        console.log(window.globalSolutions);
+        console.log(window.globalSolutions[0]);
+        console.log(window.globalSolutions[1]);
+        console.log(window.globalSolutions[0]?.grid);
+        console.log(window.globalSolutions[1]?.grid);
     </script>
 </body>
 </html>
